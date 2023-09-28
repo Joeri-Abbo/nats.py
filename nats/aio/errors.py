@@ -1,4 +1,4 @@
-# Copyright 2016-2021 The NATS Authors
+# Copyright 2016-2018 The NATS Authors
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,206 +12,111 @@
 # limitations under the License.
 #
 
-from __future__ import annotations
+import asyncio
 
-import nats.errors
-
-
-class NatsError(nats.errors.Error):
-    """
-    .. deprecated:: v2.0.0
+STALE_CONNECTION = b"'Stale Connection'"
+AUTHORIZATION_VIOLATION = b"'Authorization Violation'"
+PERMISSIONS_ERR = b"Permissions Violation"
 
 
-    Please use `nats.errors.Error` instead.
-    """
+class NatsError(Exception):
     pass
 
 
-class ErrConnectionClosed(nats.errors.ConnectionClosedError):
-    """
+class ErrConnectionClosed(NatsError):
+    def __str__(self):
+        return "nats: Connection Closed"
 
-    .. deprecated:: v2.0.0
 
-    Please use `nats.errors.ConnectionClosedError` instead.
-    """
-    pass
+class ErrSecureConnRequired(NatsError):
+    def __str__(self):
+        return "nats: Secure Connection required"
 
 
-class ErrDrainTimeout(nats.errors.DrainTimeoutError):
-    """
+class ErrSecureConnWanted(NatsError):
+    def __str__(self):
+        return "nats: Secure Connection not available"
 
-    .. deprecated:: v2.0.0
 
-    Please use `nats.errors.DrainTimeoutError` instead.
-    """
-    pass
+class ErrSecureConnFailed(NatsError):
+    def __str__(self):
+        return "nats: Secure Connection failed"
 
 
-class ErrInvalidUserCredentials(nats.errors.InvalidUserCredentialsError):
-    """
+class ErrBadSubscription(NatsError):
+    def __str__(self):
+        return "nats: Invalid Subscription"
 
-    .. deprecated:: v2.0.0
 
-    Please use `nats.errors.InvalidUserCredentialsError` instead.
-    """
-    pass
+class ErrBadSubject(NatsError):
+    def __str__(self):
+        return "nats: Invalid Subject"
 
 
-class ErrInvalidCallbackType(nats.errors.InvalidCallbackTypeError):
-    """
+class ErrSlowConsumer(NatsError):
+    def __init__(self, subject=None, sid=None):
+        self.subject = subject
+        self.sid = sid
 
-    .. deprecated:: v2.0.0
+    def __str__(self):
+        return "nats: Slow Consumer, messages dropped"
 
-    Please use `nats.errors.InvalidCallbackTypeError` instead.
-    """
-    pass
 
+class ErrTimeout(asyncio.TimeoutError):
+    def __str__(self):
+        return "nats: Timeout"
 
-class ErrConnectionReconnecting(nats.errors.ConnectionReconnectingError):
-    """
 
-    .. deprecated:: v2.0.0
+class ErrBadTimeout(NatsError):
+    def __str__(self):
+        return "nats: Timeout Invalid"
 
-    Please use `nats.errors.ConnectionReconnectingError` instead.
-    """
-    pass
 
+class ErrAuthorization(NatsError):
+    def __str__(self):
+        return "nats: Authorization Failed"
 
-class ErrConnectionDraining(nats.errors.ConnectionDrainingError):
-    """
 
-    .. deprecated:: v2.0.0
+class ErrNoServers(NatsError):
+    def __str__(self):
+        return "nats: No servers available for connection"
 
-    Please use `nats.errors.ConnectionDrainingError` instead.
-    """
-    pass
 
+class ErrJsonParse(NatsError):
+    def __str__(self):
+        return "nats: Connect message, json parse err"
 
-class ErrMaxPayload(nats.errors.MaxPayloadError):
-    """
 
-    .. deprecated:: v2.0.0
+class ErrStaleConnection(NatsError):
+    def __str__(self):
+        return "nats: Stale Connection"
 
-    Please use `nats.errors.MaxPayloadError` instead.
-    """
-    pass
 
+class ErrMaxPayload(NatsError):
+    def __str__(self):
+        return "nats: Maximum Payload Exceeded"
 
-class ErrStaleConnection(nats.errors.StaleConnectionError):
-    """
 
-    .. deprecated:: v2.0.0
+class ErrDrainTimeout(ErrTimeout):
+    def __str__(self):
+        return "nats: Draining Connection Timed Out"
 
-    Please use `nats.errors.StaleConnectionError` instead.
-    """
-    pass
 
+class ErrConnectionDraining(NatsError):
+    def __str__(self):
+        return "nats: Connection Draining"
 
-class ErrJsonParse(nats.errors.JsonParseError):
-    """
 
-    .. deprecated:: v2.0.0
+class ErrConnectionReconnecting(NatsError):
+    def __str__(self):
+        return "nats: Connection Reconnecting"
 
-    Please use `nats.errors.JsonParseError` instead.
-    """
-    pass
 
+class ErrInvalidUserCredentials(NatsError):
+    def __str__(self):
+        return "nats: Invalid user credentials"
 
-class ErrSecureConnRequired(nats.errors.SecureConnRequiredError):
-    """
 
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.SecureConnRequiredError` instead.
-    """
-    pass
-
-
-class ErrSecureConnWanted(nats.errors.SecureConnWantedError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.SecureConnWantedError` instead.
-    """
-    pass
-
-
-class ErrSecureConnFailed(nats.errors.SecureConnFailedError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.SecureConnFailedError` instead.
-    """
-    pass
-
-
-class ErrBadSubscription(nats.errors.BadSubscriptionError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.BadSubscriptionError` instead.
-    """
-    pass
-
-
-class ErrBadSubject(nats.errors.BadSubjectError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.BadSubjectError` instead.
-    """
-    pass
-
-
-class ErrSlowConsumer(nats.errors.SlowConsumerError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.SlowConsumerError` instead.
-    """
-    pass
-
-
-class ErrTimeout(nats.errors.TimeoutError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.TimeoutError` instead.
-    """
-    pass
-
-
-class ErrBadTimeout(nats.errors.BadTimeoutError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.BadTimeoutError` instead.
-    """
-    pass
-
-
-class ErrAuthorization(nats.errors.AuthorizationError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.AuthorizationError` instead.
-    """
-    pass
-
-
-class ErrNoServers(nats.errors.NoServersError):
-    """
-
-    .. deprecated:: v2.0.0
-
-    Please use `nats.errors.NoServersError` instead.
-    """
-    pass
+class ErrInvalidCallbackType(NatsError):
+    def __str__(self):
+        return "nats: Callbacks must be coroutine functions"

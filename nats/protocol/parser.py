@@ -1,4 +1,4 @@
-# Copyright 2016-2021 The NATS Authors
+# Copyright 2016-2018 The NATS Authors
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,19 +15,11 @@
 NATS network protocol parser.
 """
 
-from __future__ import annotations
-
-import json
 import re
-from typing import Any, Dict
-
-from nats.errors import ProtocolError
+import json
 
 MSG_RE = re.compile(
     b'\\AMSG\\s+([^\\s]+)\\s+([^\\s]+)\\s+(([^\\s]+)[^\\S\r\n]+)?(\\d+)\r\n'
-)
-HMSG_RE = re.compile(
-    b'\\AHMSG\\s+([^\\s]+)\\s+([^\\s]+)\\s+(([^\\s]+)[^\\S\r\n]+)?([\\d]+)\\s+(\\d+)\r\n'
 )
 OK_RE = re.compile(b'\\A\\+OK\\s*\r\n')
 ERR_RE = re.compile(b'\\A-ERR\\s+(\'.+\')?\r\n')
@@ -39,7 +31,6 @@ INFO_OP = b'INFO'
 CONNECT_OP = b'CONNECT'
 PUB_OP = b'PUB'
 MSG_OP = b'MSG'
-HMSG_OP = b'HMSG'
 SUB_OP = b'SUB'
 UNSUB_OP = b'UNSUB'
 PING_OP = b'PING'
@@ -65,29 +56,22 @@ AWAITING_CONTROL_LINE = 1
 AWAITING_MSG_PAYLOAD = 2
 MAX_CONTROL_LINE_SIZE = 1024
 
-# Protocol Errors
-STALE_CONNECTION = "stale connection"
-AUTHORIZATION_VIOLATION = "authorization violation"
-PERMISSIONS_ERR = "permissions violation"
-
 
 class Parser:
-
-    def __init__(self, nc=None) -> None:
+    def __init__(self, nc=None):
         self.nc = nc
         self.reset()
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<nats protocol parser state={self.state}>"
 
-    def reset(self) -> None:
+    def reset(self):
         self.buf = bytearray()
         self.state = AWAITING_CONTROL_LINE
         self.needed = 0
-        self.header_needed = 0
-        self.msg_arg: Dict[str, Any] = {}
+        self.msg_arg = {}
 
-    async def parse(self, data: bytes = b''):
+    async def parse(self, data=b''):
         """
         Parses the wire protocol from NATS for the client
         and dispatches the subscription callbacks.
@@ -109,27 +93,8 @@ class Parser:
                         del self.buf[:msg.end()]
                         self.state = AWAITING_MSG_PAYLOAD
                         continue
-                    except Exception:
-                        raise ProtocolError("nats: malformed MSG")
-
-                msg = HMSG_RE.match(self.buf)
-                if msg:
-                    try:
-                        subject, sid, _, reply, header_size, needed_bytes = msg.groups(
-                        )
-                        self.msg_arg["subject"] = subject
-                        self.msg_arg["sid"] = int(sid)
-                        if reply:
-                            self.msg_arg["reply"] = reply
-                        else:
-                            self.msg_arg["reply"] = b''
-                        self.needed = int(needed_bytes)
-                        self.header_needed = int(header_size)
-                        del self.buf[:msg.end()]
-                        self.state = AWAITING_MSG_PAYLOAD
-                        continue
-                    except Exception:
-                        raise ProtocolError("nats: malformed MSG")
+                    except:
+                        raise ErrProtocol("nats: malformed MSG")
 
                 ok = OK_RE.match(self.buf)
                 if ok:
@@ -140,8 +105,7 @@ class Parser:
                 err = ERR_RE.match(self.buf)
                 if err:
                     err_msg = err.groups()
-                    emsg = err_msg[0].decode().lower()
-                    await self.nc._process_err(emsg)
+                    await self.nc._process_err(err_msg)
                     del self.buf[:err.end()]
                     continue
 
@@ -172,7 +136,7 @@ class Parser:
                     # releases, in that case we won't reach here but
                     # client ping/pong interval would disconnect
                     # eventually.
-                    raise ProtocolError("nats: unknown protocol")
+                    raise ErrProtocol("nats: unknown protocol")
                 else:
                     # If nothing matched at this point, then it must
                     # be a split buffer and need to gather more bytes.
@@ -180,37 +144,20 @@ class Parser:
 
             elif self.state == AWAITING_MSG_PAYLOAD:
                 if len(self.buf) >= self.needed + CRLF_SIZE:
-                    hdr = None
                     subject = self.msg_arg["subject"]
                     sid = self.msg_arg["sid"]
                     reply = self.msg_arg["reply"]
 
                     # Consume msg payload from buffer and set next parser state.
-                    if self.header_needed > 0:
-                        hbuf = bytes(self.buf[:self.header_needed])
-                        payload = bytes(
-                            self.buf[self.header_needed:self.needed]
-                        )
-                        hdr = hbuf
-                        del self.buf[:self.needed + CRLF_SIZE]
-                        self.header_needed = 0
-                    else:
-                        payload = bytes(self.buf[:self.needed])
-                        del self.buf[:self.needed + CRLF_SIZE]
-
+                    payload = bytes(self.buf[:self.needed])
+                    del self.buf[:self.needed + CRLF_SIZE]
                     self.state = AWAITING_CONTROL_LINE
-                    await self.nc._process_msg(
-                        sid, subject, reply, payload, hdr
-                    )
+                    await self.nc._process_msg(sid, subject, reply, payload)
                 else:
                     # Wait until we have enough bytes in buffer.
                     break
 
 
-class ErrProtocol(ProtocolError):
-    """
-    .. deprecated:: v2.0.0
-    """
-
-    def __str__(self) -> str:
+class ErrProtocol(Exception):
+    def __str__(self):
         return "nats: Protocol Error"
