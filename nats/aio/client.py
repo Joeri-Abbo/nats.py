@@ -723,8 +723,7 @@ class Client:
             sub.pending_msgs_limit = pending_msgs_limit
             sub.pending_bytes_limit = pending_bytes_limit
             sub.pending_queue = asyncio.Queue(
-                maxsize=pending_msgs_limit,
-                loop=self._loop,
+                maxsize=pending_msgs_limit
             )
 
             # Close the delivery coroutine over the sub and error handler
@@ -1720,7 +1719,7 @@ class Client:
 
     async def _ping_interval(self):
         while True:
-            await asyncio.sleep(self.options["ping_interval"], loop=self._loop)
+            await asyncio.sleep(self.options["ping_interval"])
             if not self.is_connected:
                 continue
             try:
